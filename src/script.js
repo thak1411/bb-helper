@@ -13,7 +13,7 @@ var init = `
         axiosScript.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
         document.body.appendChild(axiosScript);
         var loaderTag = document.createElement('div');
-        loaderTag.innerHTML = '0';
+        loaderTag.innerHTML = '2';
         loaderTag.id = "bbHelperLoader";
         loaderTag.style.display = 'none';
         document.body.appendChild(loaderTag);
@@ -51,7 +51,7 @@ var readCourseID = `
                 if (window.bbHelperAxiosCount) ++window.bbHelperAxiosCount;
                 else window.bbHelperAxiosCount = 1;
                 window.bbHelperInit = false;
-                (function(ix, ci) {
+                (function req(ix, ci) {
                     setTimeout(function() {
                         axios.get('https://learn.hanyang.ac.kr/webapps/bbgs-OnlineAttendance-BB5a998b8c44671/app/atdView?showAll=true&custom_user_id=' + window.bbHelperStudentId + '&custom_course_id=' + ci.course.courseId)
                         .then(function(res) {
@@ -62,9 +62,10 @@ var readCourseID = `
                             };
                         })
                         .catch(function() {
-                            --window.bbHelperAxiosCount;
+                            // --window.bbHelperAxiosCount;
+                            req(ix, ci);
                         });
-                    }, 250 * i);
+                    }, 50 * i);
                 })(i, courses[i]);
             }
         });
@@ -107,11 +108,11 @@ var parseData = `
         var interval = setInterval(function() {
             if (!(window.bbHelperInit || window.bbHelperAxiosCount)) {
                 clearInterval(interval);
-                document.querySelector("#bbHelperLoader").innerHTML = '1';
                 window.bbHelperResultTable = [];
                 for (var i = 0; i < window.bbHelperCourseList.length; ++i) {
                     if (window.bbHelperCourseList[i]) parseData(window.bbHelperCourseList[i].name, window.bbHelperCourseList[i].body, i);
                 }
+                document.querySelector("#bbHelperLoader").innerHTML = '1';
             }
         }, 100);
     }
@@ -305,44 +306,38 @@ var createModal = `
  * 데이터 로드는 페이지당 최대 1회만 진행함
  */
 document.addEventListener('DOMContentLoaded', function() {
-    var loadBtn = document.querySelector('#load-btn');
-    var modalBtn = document.querySelector('#modal-btn');
     // CDN 설정 //
     chrome.tabs.executeScript({
         code: init,
     }, function() {});
-    // 클릭 시 데이터를 불러옴 //
-    loadBtn.addEventListener('click', function() {
-        loadBtn.classList.remove('popup-btn');
-        loadBtn.classList.add('popup-disabled-btn');
-        loadBtn.innerHTML = '데이터 로딩 중';
-        // 코스 아이디 가져오기 //
+    // CDN 설정 및 라이브러리 로딩이 끝나면 데이터 수집 및 모달 열기 //
+    var rinterval = setInterval(function() {
         chrome.tabs.executeScript({
-            code: readCourseID,
-        }, function() {});
-        // 데이터 로딩 완료 시 데이터를 가공 //
-        chrome.tabs.executeScript({
-            code: parseData,
-        }, function() {});
-    });
-    // 클릭 시 모달 창을 띄워 줌 //
-    modalBtn.addEventListener('click', function() {
-        chrome.tabs.executeScript({
-            code: createModal,
-        }, function() {});
-    });
-    // 모든 데이터가 로드됐는지 확인함 //
-    var interval = setInterval(function() {
+            code: 'document.querySelector("#bbHelperLoader").innerHTML',
+        }, function(res) {
+            if (res == '2') {
+                clearInterval(rinterval);
+                // 데이터 가져오기 //
+                chrome.tabs.executeScript({
+                    code: readCourseID,
+                }, function() {});
+                // 데이터 로딩 완료 시 데이터를 가공 //
+                chrome.tabs.executeScript({
+                    code: parseData,
+                }, function() {});
+            }
+        })
+    }, 100);
+    // 모든 데이터가 로드되면 모달 창을 띄워 줌 //
+    var linterval = setInterval(function() {
         chrome.tabs.executeScript({
             code: 'document.querySelector("#bbHelperLoader").innerHTML',
         }, function(res) {
             if (res == '1') {
-                clearInterval(interval);
-                loadBtn.innerHTML = '데이터 로딩 완료';
-                loadBtn.classList.remove('popup-btn');
-                loadBtn.classList.add('popup-disabled-btn');
-                modalBtn.classList.add('popup-btn');
-                modalBtn.classList.remove('popup-disabled-btn');
+                clearInterval(linterval);
+                chrome.tabs.executeScript({
+                    code: createModal,
+                }, function() {});
             }
         })
     }, 100);
