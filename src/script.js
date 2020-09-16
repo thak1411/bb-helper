@@ -83,12 +83,12 @@ var readCourseID = `
 var parseData = `
 (function() {
     function script() {
-        function parseData(table, ix) {
+        function parseData(name, table, ix) {
             var ptable;
             table = table.slice(table.indexOf('<tbody'));
             table = table.slice(0, table.indexOf('</tbody>') + 8);
-            window.bbHelperResultTable[ix] = [];
-            for (var b = 0, bc = 0, idx = 0; ~table.indexOf('<span'); ++b) {
+            window.bbHelperResultTable[ix] = [ name ];
+            for (var b = 0, bc = 0, idx = 1; ~table.indexOf('<span'); ++b) {
                 table = table.slice(table.indexOf('<span'));
                 table = table.slice(table.indexOf('>') + 1);
                 ptable = table.slice(0, table.indexOf('</span'));
@@ -106,7 +106,7 @@ var parseData = `
                 document.querySelector("#bbHelperLoader").innerHTML = '1';
                 window.bbHelperResultTable = [];
                 for (var i = 0; i < window.bbHelperCourseList.length; ++i) {
-                    if (window.bbHelperCourseList[i]) parseData(window.bbHelperCourseList[i].body, i);
+                    if (window.bbHelperCourseList[i]) parseData(window.bbHelperCourseList[i].name, window.bbHelperCourseList[i].body, i);
                 }
             }
         }, 100);
@@ -125,7 +125,9 @@ var parseData = `
 var createModal = `
 (function() {
     function script() {
+        if (document.querySelector('#bbHelperModal')) return;;
         var modal = document.createElement('div');
+        modal.id = 'bbHelperModal';
         modal.style.width = '100%';
         modal.style.height = '100%';
         modal.style.position = 'absolute';
@@ -158,13 +160,36 @@ var createModal = `
                 font-weight: 600;
                 position: absolute;
             }
-            .bbHelpersection {
+            .bbHelperSection {
                 width: 100%;
-                height: calc(100% - 160px);
+                overflow: hidden auto;
+                height: calc(100% - 100px);
+            }
+            .bbHelperSection h2 {
+                text-align: center;
+                font-family: "Open Sans";
+            }
+            .bbHelperTable {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+            .bbHelperTable thead tr {
+                border-bottom: 1px solid #ececec;
+            }
+            .bbHelperTable thead tr th {
+                height: 35px;
+            }
+            .bbHelperTable tbody tr td {
+                height: 30px;
+                text-align: center;
+                vertical-align: middle;
+            }
+            .bbHelperTable tbody tr:nth-child(even) {
+                background: #ececec;
             }
             .bbHelperFooter {
                 width: 100%;
-                height: 100px;
+                height: 40px;
                 text-align: right;
             }
             .bbHelperFooter h2 {
@@ -175,13 +200,49 @@ var createModal = `
             <button class="bbHelperHeaderCloseBtn">×</button>
             <h1>BB Helper Attendance List</h1>
         </div>
-        <div class="bbHelpersection">
-            
+        <div class="bbHelperSection">
         </div>
         <div class="bbHelperFooter">
             <h2>Made By Rn</h2>
         </div>
         \`;
+        var bbHelperCloseBtn = document.querySelector('.bbHelperHeaderCloseBtn');
+        bbHelperCloseBtn.addEventListener('click', function() {
+            modal.parentNode.removeChild(modal);
+        });
+        var bbHelperSection = document.querySelector('.bbHelperSection');
+        for (var i = 0; i < window.bbHelperResultTable.length; ++i) {
+            var value = window.bbHelperResultTable[i];
+            var title = document.createElement('h2');
+            var table = document.createElement('table');
+            table.classList.add('bbHelperTable');
+            table.innerHTML = \`
+            <thead>
+                <tr>
+                    <th>위치</th>
+                    <th>컨텐츠명</th>
+                    <th>컨텐츠 시간</th>
+                    <th>영상 출석 상태(P/F)</th>
+                </tr>
+            </thead>
+            \`;
+            title.innerHTML = value[0];
+            bbHelperSection.appendChild(title);
+            var tbody = document.createElement('tbody');
+            for (var j = 1; j < value.length; ++j) {
+                var jvalue = value[j];
+                tbody.innerHTML += \`
+                <tr>
+                    <td>\${jvalue[0]}</td>
+                    <td>\${jvalue[1]}</td>
+                    <td>\${jvalue[4]}</td>
+                    <td>\${jvalue[6]}</td>
+                </tr>
+                \`;
+            }
+            table.appendChild(tbody);
+            bbHelperSection.appendChild(table);
+        }
     }
     
     function inject(fn) {
