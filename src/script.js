@@ -281,7 +281,7 @@ var createModal = `
                 \`;
                 useCount += 1;
             }
-            if (useCount) {
+            if ((window.bbHelperBlankFilterMode == 1 && useCount) || (window.bbHelperBlankFilterMode != 1)) {
                 title.innerHTML = value[0];
                 bbHelperSection.appendChild(title);
                 table.appendChild(tbody);
