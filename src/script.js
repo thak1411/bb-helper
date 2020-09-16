@@ -1,6 +1,6 @@
 
 /**
- * axios / cheerio 를 사용하기 위해 관련 CDN을 끼워넣음
+ * axios 를 사용하기 위해 관련 CDN을 끼워넣음
  */
 var init = `
 (function() {
@@ -12,6 +12,11 @@ var init = `
         var axiosScript = document.createElement('script');
         axiosScript.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
         document.body.appendChild(axiosScript);
+        var loaderTag = document.createElement('div');
+        loaderTag.innerHTML = '0';
+        loaderTag.id = "bbHelperLoader";
+        loaderTag.style.display = 'none';
+        document.body.appendChild(loaderTag);
     }
     
     function inject(fn) {
@@ -98,6 +103,7 @@ var parseData = `
         var interval = setInterval(function() {
             if (!(window.bbHelperInit || window.bbHelperAxiosCount)) {
                 clearInterval(interval);
+                document.querySelector("#bbHelperLoader").innerHTML = '1';
                 window.bbHelperResultTable = [];
                 for (var i = 0; i < window.bbHelperCourseList.length; ++i) {
                     if (window.bbHelperCourseList[i]) parseData(window.bbHelperCourseList[i].body, i);
@@ -116,28 +122,122 @@ var parseData = `
 })();
 `;
 
+var createModal = `
+(function() {
+    function script() {
+        var modal = document.createElement('div');
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.position = 'absolute';
+        modal.style.top = 0;
+        modal.style.left = 0;
+        modal.style.margin = 0;
+        modal.style.zIndex = 1000000;
+        modal.style.background = '#ffffff';
+        document.body.appendChild(modal);
+        modal.innerHTML = \`
+        <style>
+            .bbHelperHeader {
+                width: 100%;
+                height: 60px;
+                text-align: center;
+                background: #1d41c8;
+            }
+            .bbHelperHeader h1 {
+                margin: 0;
+                color: #ffffff;
+                line-height: 60px;
+                font-family: "Open Sans";
+            }
+            .bbHelperHeaderCloseBtn {
+                left: 0;
+                width: 60px;
+                height: 60px;
+                color: #ffffff;
+                font-size: 34px;
+                font-weight: 600;
+                position: absolute;
+            }
+            .bbHelpersection {
+                width: 100%;
+                height: calc(100% - 160px);
+            }
+            .bbHelperFooter {
+                width: 100%;
+                height: 100px;
+                text-align: right;
+            }
+            .bbHelperFooter h2 {
+                font-family: "Open Sans";
+            }
+        </style>
+        <div class="bbHelperHeader">
+            <button class="bbHelperHeaderCloseBtn">×</button>
+            <h1>BB Helper Attendance List</h1>
+        </div>
+        <div class="bbHelpersection">
+            
+        </div>
+        <div class="bbHelperFooter">
+            <h2>Made By Rn</h2>
+        </div>
+        \`;
+    }
+    
+    function inject(fn) {
+        var script = document.createElement('script');
+        script.text = '(' + fn.toString() + ')()';
+        document.body.appendChild(script);
+    }
+    
+    inject(script);
+})();
+`;
+
 /**
  * 데이터 로드 버튼을 누르면 시작함
  * 데이터 로드는 페이지당 최대 1회만 진행함
  */
 document.addEventListener('DOMContentLoaded', function() {
     var loadBtn = document.querySelector('#load-btn');
+    var modalBtn = document.querySelector('#modal-btn');
+    // CDN 설정 //
+    chrome.tabs.executeScript({
+        code: init,
+    }, function() {});
+    // 클릭 시 데이터를 불러옴 //
     loadBtn.addEventListener('click', function() {
         loadBtn.classList.remove('popup-btn');
         loadBtn.classList.add('popup-disabled-btn');
         loadBtn.innerHTML = '데이터 로딩 중';
-        // CDN 설정 //
+        // 코스 아이디 가져오기 //
         chrome.tabs.executeScript({
-            code: init,
-        }, function() {
-            // 코스 아이디 가져오기 //
-            chrome.tabs.executeScript({
-                code: readCourseID,
-            }, function() {});
-        });
+            code: readCourseID,
+        }, function() {});
         // 데이터 로딩 완료 시 데이터를 가공 //
         chrome.tabs.executeScript({
             code: parseData,
         }, function() {});
     });
+    // 클릭 시 모달 창을 띄워 줌 //
+    modalBtn.addEventListener('click', function() {
+        chrome.tabs.executeScript({
+            code: createModal,
+        }, function() {});
+    });
+    // 모든 데이터가 로드됐는지 확인함 //
+    var interval = setInterval(function() {
+        chrome.tabs.executeScript({
+            code: 'document.querySelector("#bbHelperLoader").innerHTML',
+        }, function(res) {
+            if (res == '1') {
+                clearInterval(interval);
+                loadBtn.innerHTML = '데이터 로딩 완료';
+                loadBtn.classList.remove('popup-btn');
+                loadBtn.classList.add('popup-disabled-btn');
+                modalBtn.classList.add('popup-btn');
+                modalBtn.classList.remove('popup-disabled-btn');
+            }
+        })
+    }, 100);
 });
