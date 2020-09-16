@@ -44,6 +44,10 @@ var readCourseID = `
         })
         .then(function(courses) {
             for (var i = 0; i < courses.length; ++i) {
+                // 학기 번호 - 학기 바뀌면 업데이트 필요 //
+                // 학기 관련 정보: {"results":[{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2017-12-14T15:00:00.000Z","endDate":"2018-01-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2017년 겨울학기","id":"_10_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2018-12-23T15:00:00.000Z","endDate":"2019-01-15T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2018년 겨울 계절학기","id":"_14_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2018-06-21T15:00:00.000Z","endDate":"2018-08-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2018년 여름학기","id":"_12_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2018-02-28T15:00:00.000Z","endDate":"2018-08-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2018년 1학기","id":"_11_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2018-09-02T15:00:00.000Z","endDate":"2018-12-21T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2018년 2학기","id":"_13_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2019-12-23T15:00:00.000Z","endDate":"2020-01-15T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2019년 겨울학기","id":"_18_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2019-06-20T15:00:00.000Z","endDate":"2019-08-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2019년 여름학기","id":"_16_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2019-02-28T15:00:00.000Z","endDate":"2019-08-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2019년 1학기","id":"_15_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2019-08-31T15:00:00.000Z","endDate":"2020-02-29T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2019년 2학기","id":"_17_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2020년 겨울학기","id":"_26_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2020년 여름학기","id":"_24_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2020-03-15T15:00:00.000Z","endDate":"2020-08-31T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2020년 1학기","id":"_23_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2020년1학기(미래인재교육원)","id":"_68_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":"2020-08-31T15:00:00.000Z","endDate":"2021-02-28T14:59:59.000Z","durationType":"DATE_RANGE","daysOfUse":0,"name":"2020년 2학기","id":"_25_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2020년2학기(미래인재교육원)","id":"_83_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2021년 겨울학기","id":"_22_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2021년 여름학기","id":"_20_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2021년 1학기","id":"_19_1"},{"description":{"rawText":"","displayText":"","webLocation":null,"fileLocation":null},"startDate":null,"endDate":null,"durationType":"CONTINUOUS","daysOfUse":0,"name":"2021년 2학기","id":"_21_1"}],"paging":{"previousPage":"","nextPage":"","count":19,"limit":1000,"offset":0},"permissions":null} //
+                if (courses[i].course.termId != '_25_1') continue;
+
                 if (window.bbHelperAxiosCount) ++window.bbHelperAxiosCount;
                 else window.bbHelperAxiosCount = 1;
                 window.bbHelperInit = false;
@@ -60,7 +64,7 @@ var readCourseID = `
                         .catch(function() {
                             --window.bbHelperAxiosCount;
                         });
-                    }, 200 * i);
+                    }, 250 * i);
                 })(i, courses[i]);
             }
         });
@@ -125,7 +129,9 @@ var parseData = `
 var createModal = `
 (function() {
     function script() {
-        if (document.querySelector('#bbHelperModal')) return;;
+        if (document.querySelector('#bbHelperModal')) return;
+        if (!window.bbHelperPFFilterMode) window.bbHelperPFFilterMode = 1;
+        if (!window.bbHelperBlankFilterMode) window.bbHelperBlankFilterMode = 1;
         var modal = document.createElement('div');
         modal.id = 'bbHelperModal';
         modal.style.width = '100%';
@@ -160,10 +166,22 @@ var createModal = `
                 font-weight: 600;
                 position: absolute;
             }
+            .bbHelperNavigation {
+                width: 100%;
+                height: 50px;
+                text-align: right;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+            }
+            .bbHelperDropdownBtn {
+                width: 220px;
+                height: 100%;
+                font-size: 18px;
+                border-left: 1px solid rgba(0, 0, 0, 0.15);
+            }
             .bbHelperSection {
                 width: 100%;
                 overflow: hidden auto;
-                height: calc(100% - 100px);
+                height: calc(100% - 150px);
             }
             .bbHelperSection h2 {
                 text-align: center;
@@ -184,8 +202,8 @@ var createModal = `
                 text-align: center;
                 vertical-align: middle;
             }
-            .bbHelperTable tbody tr:nth-child(even) {
-                background: #ececec;
+            .bbHelperTable tbody tr {
+                border-bottom: 1px solid #ececec;
             }
             .bbHelperFooter {
                 width: 100%;
@@ -198,7 +216,11 @@ var createModal = `
         </style>
         <div class="bbHelperHeader">
             <button class="bbHelperHeaderCloseBtn">×</button>
-            <h1>BB Helper Attendance List</h1>
+            <h1>BB Helper Attendance Table</h1>
+        </div>
+        <div class="bbHelperNavigation">
+            <button id="bbHelperPFFilter" class="bbHelperDropdownBtn"></button>
+            <button id="bbHelperBlankFilter" class="bbHelperDropdownBtn"></button>
         </div>
         <div class="bbHelperSection">
         </div>
@@ -209,6 +231,24 @@ var createModal = `
         var bbHelperCloseBtn = document.querySelector('.bbHelperHeaderCloseBtn');
         bbHelperCloseBtn.addEventListener('click', function() {
             modal.parentNode.removeChild(modal);
+        });
+        var PFFilterTitle = [ 'F만 보이게', 'P만 보이게', 'F, P 둘 다 보이게' ];
+        var blankFilterTitle = [ '출석없는 과목 안보이게', '출석 없어도 보이게' ];
+        var bbHelperPFFilter = document.querySelector('#bbHelperPFFilter');
+        var bbHelperBlankFilter = document.querySelector('#bbHelperBlankFilter');
+        bbHelperPFFilter.innerText = PFFilterTitle[window.bbHelperPFFilterMode - 1];
+        bbHelperBlankFilter.innerText = blankFilterTitle[window.bbHelperBlankFilterMode - 1];
+        bbHelperPFFilter.addEventListener('click', function() {
+            window.bbHelperPFFilterMode = (window.bbHelperPFFilterMode) % 3 + 1;
+            modal.parentNode.removeChild(modal);
+            script();
+            return;
+        });
+        bbHelperBlankFilter.addEventListener('click', function() {
+            window.bbHelperBlankFilterMode = (window.bbHelperBlankFilterMode) % 2 + 1;
+            modal.parentNode.removeChild(modal);
+            script();
+            return;
         });
         var bbHelperSection = document.querySelector('.bbHelperSection');
         for (var i = 0; i < window.bbHelperResultTable.length; ++i) {
@@ -226,22 +266,27 @@ var createModal = `
                 </tr>
             </thead>
             \`;
-            title.innerHTML = value[0];
-            bbHelperSection.appendChild(title);
             var tbody = document.createElement('tbody');
+            var useCount = 0;
             for (var j = 1; j < value.length; ++j) {
                 var jvalue = value[j];
+                if (!((window.bbHelperPFFilterMode & 1 && jvalue[6] == 'F') || (window.bbHelperPFFilterMode & 2 && jvalue[6] == 'P'))) continue;
                 tbody.innerHTML += \`
-                <tr>
+                <tr style="background-color:\${jvalue[6] == 'F' ? 'rgba(255, 0, 0, 0.15)' : 'rgba(0, 0, 255, 0.15)'};">
                     <td>\${jvalue[0]}</td>
                     <td>\${jvalue[1]}</td>
                     <td>\${jvalue[4]}</td>
-                    <td>\${jvalue[6]}</td>
+                    <td style="font-weight:900; color:\${jvalue[6] == 'F' ? '#ff0000' : '#0000ff'};">\${jvalue[6]}</td>
                 </tr>
                 \`;
+                useCount += 1;
             }
-            table.appendChild(tbody);
-            bbHelperSection.appendChild(table);
+            if (useCount) {
+                title.innerHTML = value[0];
+                bbHelperSection.appendChild(title);
+                table.appendChild(tbody);
+                bbHelperSection.appendChild(table);
+            }
         }
     }
     
