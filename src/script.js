@@ -12,9 +12,6 @@ var init = `
         var axiosScript = document.createElement('script');
         axiosScript.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
         document.body.appendChild(axiosScript);
-        var cheerioScript = document.createElement('script');
-        cheerioScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/cheerio/0.22.0/index.min.js';
-        document.body.appendChild(cheerioScript);
     }
     
     function inject(fn) {
@@ -75,20 +72,36 @@ var readCourseID = `
 `;
 
 /**
- * 모든 데이터가 로드가 완료되면 화면에 테이블 모달을 띄워줌
+ * 모든 데이터가 로드가 완료되면 데이터를 가공해서 저장함
  * 0.1초마다 데이터 로드 완료 여부를 검사함
  */
-var drawContent = `
+var parseData = `
 (function() {
     function script() {
-        function makeParserTree() {
-            document.querySelector('html').innerHTML = window.bbHelperCourseList[4].body;
+        function parseData(table, ix) {
+            var ptable;
+            table = table.slice(table.indexOf('<tbody'));
+            table = table.slice(0, table.indexOf('</tbody>') + 8);
+            window.bbHelperResultTable[ix] = [];
+            for (var b = 0, bc = 0, idx = 0; ~table.indexOf('<span'); ++b) {
+                table = table.slice(table.indexOf('<span'));
+                table = table.slice(table.indexOf('>') + 1);
+                ptable = table.slice(0, table.indexOf('</span'));
+                if (b & 1) {
+                    if (bc == 0) window.bbHelperResultTable[ix][idx] = [];
+                    window.bbHelperResultTable[ix][idx].push(ptable);
+                    if (++bc % 7 == 0) ++idx;
+                    bc %= 7;
+                }
+            }
         }
-
         var interval = setInterval(function() {
             if (!(window.bbHelperInit || window.bbHelperAxiosCount)) {
                 clearInterval(interval);
-                makeParserTree();
+                window.bbHelperResultTable = [];
+                for (var i = 0; i < window.bbHelperCourseList.length; ++i) {
+                    if (window.bbHelperCourseList[i]) parseData(window.bbHelperCourseList[i].body, i);
+                }
             }
         }, 100);
     }
@@ -104,20 +117,27 @@ var drawContent = `
 `;
 
 /**
- * 익스텐션 버튼을 누르면 시작함
+ * 데이터 로드 버튼을 누르면 시작함
+ * 데이터 로드는 페이지당 최대 1회만 진행함
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // CDN 설정 - 1회만 설정 함 //
-    chrome.tabs.executeScript({
-        code: init,
-    }, function() {
-        // 코스 아이디 가져오기 //
+    var loadBtn = document.querySelector('#load-btn');
+    loadBtn.addEventListener('click', function() {
+        loadBtn.classList.remove('popup-btn');
+        loadBtn.classList.add('popup-disabled-btn');
+        loadBtn.innerHTML = '데이터 로딩 중';
+        // CDN 설정 //
         chrome.tabs.executeScript({
-            code: readCourseID,
+            code: init,
+        }, function() {
+            // 코스 아이디 가져오기 //
+            chrome.tabs.executeScript({
+                code: readCourseID,
+            }, function() {});
+        });
+        // 데이터 로딩 완료 시 데이터를 가공 //
+        chrome.tabs.executeScript({
+            code: parseData,
         }, function() {});
     });
-    // 데이터 완료 시 모달을 그려줌 //
-    chrome.tabs.executeScript({
-        code: drawContent,
-    }, function() {});
 });
