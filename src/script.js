@@ -59,6 +59,7 @@ var readCourseID = `
                             window.bbHelperCourseList[ix] = {
                                 body: res.data,
                                 name: ci.course.name,
+                                oid: ci.courseId,
                             };
                         })
                         .catch(function() {
@@ -127,6 +128,9 @@ var parseData = `
 })();
 `;
 
+/**
+ * 현재까지 파싱한 결과를 토대로 모달을 그려줌
+ */
 var createModal = `
 (function() {
     function script() {
@@ -251,6 +255,19 @@ var createModal = `
             script();
             return;
         });
+        for (var i = 0; i < window.bbHelperResultTable.length; ++i) {
+            var val = window.bbHelperResultTable[i];
+            for (var j = 1; j < val.length; ++j) {
+                var vl = val[j];
+                if (vl.length != 8) {
+                    setTimeout(function() {
+                        modal.parentNode.removeChild(modal);
+                        script();
+                    }, 500);
+                    return;
+                }
+            }
+        }
         var bbHelperSection = document.querySelector('.bbHelperSection');
         for (var i = 0; i < window.bbHelperResultTable.length; ++i) {
             var value = window.bbHelperResultTable[i];
@@ -264,11 +281,15 @@ var createModal = `
                     <th>컨텐츠명</th>
                     <th>컨텐츠 시간</th>
                     <th>영상 출석 상태(P/F)</th>
+                    <th>출석</th>
                 </tr>
             </thead>
             \`;
             var tbody = document.createElement('tbody');
             var useCount = 0;
+            function callAjax(val1, val2, val3) {
+                console.log('callAjax:', val1, val2, val3);
+            }
             for (var j = 1; j < value.length; ++j) {
                 var jvalue = value[j];
                 if (!((window.bbHelperPFFilterMode & 1 && jvalue[6] == 'F') || (window.bbHelperPFFilterMode & 2 && jvalue[6] == 'P'))) continue;
@@ -278,8 +299,34 @@ var createModal = `
                     <td>\${jvalue[1]}</td>
                     <td>\${jvalue[4]}</td>
                     <td style="font-weight:900; color:\${jvalue[6] == 'F' ? '#ff0000' : '#0000ff'};">\${jvalue[6]}</td>
+                    <td>
+                        <button style="{margin-right: 10px;}" class="ct\${jvalue[7][1]}">출석</button>
+                    </td>
                 </tr>
                 \`;
+                function getRandomArbitrary(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+                (function req(time, url, conid) {
+                    setTimeout(function() {
+                        if (!document.querySelector('.ct' + conid)) {
+                            req(time, url);
+                            return;
+                        }
+                        var btn = document.querySelector('.ct' + conid);
+                        btn.addEventListener('click', function() {
+                            var tplt = time.split(/분|초/);
+                            var _time;
+                            if (tplt.length == 2) {
+                                tplt = time.split(/시간|분/);
+                                _time = Number(Number(tplt[0]) * 3600 + Number(tplt[1]) * 60 + getRandomArbitrary(15, 30)).toFixed(2);
+                            } else {
+                                _time = Number(Number(tplt[0]) * 60 + Number(tplt[1]) + getRandomArbitrary(15, 30)).toFixed(2);
+                            }
+                            window.open(url.match(/.+&per=/)[0] + '100.0&st=' + _time + '&en=' + _time, '_blank');
+                        });
+                    }, 500);
+                })(jvalue[4], jvalue[7][0], jvalue[7][1]);
                 useCount += 1;
             }
             if ((window.bbHelperBlankFilterMode == 1 && useCount) || (window.bbHelperBlankFilterMode != 1)) {
@@ -291,6 +338,88 @@ var createModal = `
         }
     }
     
+    function inject(fn) {
+        var script = document.createElement('script');
+        script.text = '(' + fn.toString() + ')()';
+        document.body.appendChild(script);
+    }
+    
+    inject(script);
+})();
+`;
+
+/**
+ * 영상의 정보를 가져옴
+ */
+var getVideoData = `
+(function(){
+    function script() {
+        function Request(nowAddress, valuename) {
+            var rtnval = "";
+            // var nowAddress = location.search;
+            var parameters = new Array();
+            parameters = (nowAddress.slice(nowAddress.indexOf("?")+1,nowAddress.length)).split("&");
+            for (var i = 0; i < parameters.length; ++i) {
+                if (parameters[i].indexOf(valuename) != -1) {
+                    rtnval = parameters[i].split("=")[1];
+                    if (!rtnval) rtnval = "";
+                    rtnval = decodeURIComponent(rtnval);
+                    break;
+                }
+            }
+            return rtnval;
+        }
+        function getData(idx, value) {
+            for (var i = 0; i < window.bbHelperResultTable[idx].length; ++i) {
+                var val = window.bbHelperResultTable[idx][i];
+                if (val[1] == value.title) {
+                    (function req(value, val, ix) {
+                        setTimeout(function() {
+                            fetch(value.contentDetail['resource/x-bb-externallink'].url)
+                            .then(function(res) {
+                                if (res.status == 500) {
+                                    req(value, val, ix);
+                                } else {
+                                    val.push([ res.url, Request(res.url, 'contentId') ]);
+                                }
+                            })
+                        }, 50 * ix);
+                    })(value, val, i);
+                }
+            }
+        }
+        function dfs(idx, oid, dir) {
+            for (var i = 0; i < dir.length; ++i) {
+                var value = dir[i];
+                if (!(value.contentDetail['resource/x-bb-folder'] && value.contentDetail['resource/x-bb-folder'].isFolder)) {
+                    if (value.contentDetail['resource/x-bb-externallink'] && value.contentDetail['resource/x-bb-externallink'].url) {
+                        getData(idx, value);
+                    }
+                    continue;
+                }
+                axios.get('https://learn.hanyang.ac.kr/learn/api/v1/courses/' + oid + '/contents/' + value.id + '/children?@view=Summary&expand=assignedGroups,selfEnrollmentGroups.group,gradebookCategory&limit=9999')
+                .then(function(res) {
+                    dfs(idx, oid, res.data.results);
+                });
+            }
+        }
+        if (!window.bbHelperResultTable || !window.bbHelperResultTable.length) {
+            setTimeout(function() {
+                script();
+            }, 500);
+            return;
+        }
+        for (var i = 0; i < window.bbHelperCourseList.length; ++i) {
+            var value = window.bbHelperCourseList[i];
+            (function(idx, value) {
+                axios.get('https://learn.hanyang.ac.kr/learn/api/v1/courses/' + value.oid + '/contents/ROOT/children?@view=Summary&expand=assignedGroups,selfEnrollmentGroups.group,gradebookCategory&limit=9999')
+                .then(function(res) {
+                    dfs(idx, value.oid, res.data.results);
+                });
+            })(i, value);
+        }
+    }
+
     function inject(fn) {
         var script = document.createElement('script');
         script.text = '(' + fn.toString() + ')()';
@@ -324,6 +453,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 데이터 로딩 완료 시 데이터를 가공 //
                 chrome.tabs.executeScript({
                     code: parseData,
+                }, function() {});
+                chrome.tabs.executeScript({
+                    code: getVideoData,
                 }, function() {});
             }
         })
